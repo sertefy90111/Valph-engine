@@ -42,22 +42,28 @@ jobs:
       fail-fast: false # one platform failing must not cancel the other
       matrix:
         include:
+          # `output` must match the folder that the target actually writes to:
+          #   FlaxEditor -> Binaries/Editor/<Win64|Linux|Mac>/<Configuration>   (Source/FlaxEditor.Build.cs)
+          #   FlaxGame   -> Source/Platforms/<Platform>/Binaries/Game/<Arch>/<Configuration> (Source/FlaxGame.Build.cs)
           - label: Editor (Windows, Development x64)
             platform: Windows
             target: FlaxEditor
             arch: x64
             configuration: Development
+            output: Binaries/Editor/Win64/Development
           - label: Game (Windows, Release x64)
             platform: Windows
             target: FlaxGame
             arch: x64
             configuration: Release
+            output: Source/Platforms/Windows/Binaries/Game/x64/Release
           - label: Game (Android, Release ARM64)
             platform: Android
             target: FlaxGame
             arch: ARM64
             configuration: Release
             android: true
+            output: Source/Platforms/Android/Binaries/Game/ARM64/Release
     steps:
       - name: Checkout repo (shallow + LFS in one pass)
         uses: actions/checkout@v6
@@ -157,12 +163,28 @@ jobs:
           "### ⏱️ ${{ matrix.label }} finished in $(((Get-Date) - $t0).ToString('mm\:ss')) (exit $code)" >> $env:GITHUB_STEP_SUMMARY
           exit $code
 
+      - name: Inspect build output
+        if: success()
+        shell: pwsh
+        run: |
+          $out = '${{ matrix.output }}'
+          if (Test-Path $out) {
+            Write-Host "Build output: $out"
+            Get-ChildItem $out -Recurse -File |
+              Select-Object @{n='Size(KB)';e={[math]::Round($_.Length/1KB)}}, FullName |
+              Format-Table -AutoSize | Out-String -Width 300 | Write-Host
+          } else {
+            Write-Warning "Expected output folder '$out' does not exist. Searching for produced binaries..."
+            Get-ChildItem -Recurse -File -Include 'FlaxGame*','FlaxEditor*','libFlaxGame*' -ErrorAction SilentlyContinue |
+              Select-Object -ExpandProperty FullName | Write-Host
+          }
+
       - name: Upload binaries
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.target }}-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.configuration }}
-          path: Binaries/${{ matrix.target }}/${{ matrix.platform }}/**
+          path: ${{ matrix.output }}/**
           if-no-files-found: error
           retention-days: 14
           compression-level: 1 # fastest upload, binaries are already dense
@@ -171,7 +193,11 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.target }}-${{ matrix.platform }}-logs-${{ github.run_number }}
-          path: Logs/**
+          name: ${{ matrix.target }}-${{ matrix.platform }}-${{ matrix.arch }}-logs-${{ github.run_number }}
+          # Flax.Build writes its log to Cache/Intermediate/Log.txt (see Configuration.LogFile)
+          path: |
+            Cache/Intermediate/Log.txt
+            Cache/Intermediate/**/*.log
+            Logs/**
           if-no-files-found: warn
           retention-days: 7
