@@ -180,6 +180,26 @@ namespace FlaxEditor.GUI
         }
 
         /// <inheritdoc />
+        public override bool OnTouchDown(Float2 location, int pointerId)
+        {
+            _primaryMouseDown = true;
+            Focus();
+            return true;
+        }
+
+        /// <inheritdoc />
+        public override bool OnTouchUp(Float2 location, int pointerId)
+        {
+            if (_primaryMouseDown)
+            {
+                _primaryMouseDown = false;
+                OnClicked();
+                return true;
+            }
+            return base.OnTouchUp(location, pointerId);
+        }
+
+        /// <inheritdoc />
         public override bool OnMouseDown(Float2 location, MouseButton button)
         {
             if (button == MouseButton.Left)

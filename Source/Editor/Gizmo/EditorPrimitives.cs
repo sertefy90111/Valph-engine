@@ -49,7 +49,7 @@ namespace FlaxEditor.Gizmo
             // Check if use MSAA
             var format = output.Format;
             var formatFeatures = GPUDevice.Instance.GetFormatFeatures(format);
-            bool enableMsaa = formatFeatures.MSAALevelMax >= MSAALevel.X4 && Editor.Instance.Options.Options.Visual.EnableMSAAForDebugDraw;
+            bool enableMsaa = formatFeatures.MSAALevelMax >= MSAALevel.X4 && Editor.Instance.Options.UseMSAAForDebugDraw;
 
             // Prepare
             var msaaLevel = enableMsaa ? MSAALevel.X4 : MSAALevel.None;

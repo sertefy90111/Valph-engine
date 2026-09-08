@@ -93,6 +93,16 @@ namespace FlaxEditor.GUI.Docking
         private void OnEditorOptionsChanged(EditorOptions options)
         {
             _closeButtonVisibility = options.Interface.ShowTabCloseButton;
+            bool isPhone = Editor.Instance.Options.IsPhoneLayout;
+            _tabHeight = isPhone ? Mathf.Max(options.Interface.TabHeight, 36.0f) : options.Interface.TabHeight;
+            _useMinimumTabWidth = isPhone || options.Interface.UseMinimumTabWidth;
+            _minimumTabWidth = isPhone ? Mathf.Max(options.Interface.MinimumTabWidth, 112.0f) : options.Interface.MinimumTabWidth;
+            PerformLayout(true);
+        }
+
+        internal void RefreshResponsiveLayout()
+        {
+            OnEditorOptionsChanged(Editor.Instance.Options.Options);
         }
 
         private DockWindow GetTabAtPos(Float2 position, out bool closeButton)
@@ -399,6 +409,24 @@ namespace FlaxEditor.GUI.Docking
             }
 
             return base.OnMouseDoubleClick(location, button);
+        }
+
+        /// <inheritdoc />
+        public override bool OnTouchDown(Float2 location, int pointerId)
+        {
+            if (IsSingleFloatingWindow)
+                return base.OnTouchDown(location, pointerId);
+
+            var tab = GetTabAtPos(location, out var overCross);
+            if (tab != null)
+            {
+                if (overCross)
+                    tab.Close(ClosingReason.User);
+                else
+                    _panel.SelectTab(tab);
+                return true;
+            }
+            return base.OnTouchDown(location, pointerId);
         }
 
         /// <inheritdoc />

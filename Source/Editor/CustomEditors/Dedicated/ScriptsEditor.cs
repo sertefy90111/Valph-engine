@@ -10,6 +10,7 @@ using FlaxEditor.Content;
 using FlaxEditor.GUI;
 using FlaxEditor.GUI.ContextMenu;
 using FlaxEditor.GUI.Drag;
+using FlaxEditor.Options;
 using FlaxEditor.Scripting;
 using FlaxEngine;
 using FlaxEngine.GUI;
@@ -197,6 +198,20 @@ namespace FlaxEditor.CustomEditors.Dedicated
             return false;
         }
 
+        private static ContentProxy GetSelectedScriptProxy()
+        {
+            switch (Editor.Instance.Options.Options.SourceCode.Language)
+            {
+                case SourceCodeOptions.ScriptingLanguage.CSharp:
+                    return Editor.Instance.ContentDatabase.GetProxy("cs");
+                case SourceCodeOptions.ScriptingLanguage.Cpp:
+                    // Several C++ asset proxies use the .cpp/.h extensions, so select the script proxy explicitly.
+                    return Editor.Instance.ContentDatabase.Proxy.OfType<CppScriptProxy>().FirstOrDefault();
+                default:
+                    return Editor.Instance.ContentDatabase.GetProxy("java");
+            }
+        }
+
         private static bool IsValidScriptName(string text)
         {
             if (string.IsNullOrEmpty(text))
@@ -207,7 +222,8 @@ namespace FlaxEditor.CustomEditors.Dedicated
                 return false;
             if (text.Any(c => !char.IsLetterOrDigit(c) && c != '_'))
                 return false;
-            return Editor.Instance.ContentDatabase.GetProxy("cs").IsFileNameValid(text);
+            var proxy = GetSelectedScriptProxy();
+            return proxy != null && proxy.IsFileNameValid(text);
         }
 
         /// <inheritdoc />
@@ -302,8 +318,14 @@ namespace FlaxEditor.CustomEditors.Dedicated
                 if (error)
                     return;
             }
-            var path = Path.Combine(Globals.ProjectSourceFolder, moduleName, item.ScriptName + ".cs");
-            Editor.Instance.ContentDatabase.GetProxy("cs").Create(path, null);
+            var proxy = GetSelectedScriptProxy();
+            if (proxy == null)
+            {
+                Editor.LogError("Cannot create a script: the selected source language proxy is not registered.");
+                return;
+            }
+            var path = Path.Combine(Globals.ProjectSourceFolder, moduleName, item.ScriptName + "." + proxy.FileExtension);
+            proxy.Create(path, null);
         }
 
         /// <summary>

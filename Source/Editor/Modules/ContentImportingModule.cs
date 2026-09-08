@@ -221,15 +221,21 @@ namespace FlaxEditor.Modules
                 // Preserve file extension (will copy file to the import location)
                 outputExtension = extension;
 
-                // Check if can place source files here
-                if (!targetLocation.CanHaveScripts && (extension == ".cs" || extension == ".cpp" || extension == ".h" || extension == ".c" || extension == ".hpp"))
+                // Source files belong in a module Source folder. Java is the preferred gameplay language, while legacy C# and C++ remain supported.
+                bool isSourceFile = extension.Equals(".java", StringComparison.OrdinalIgnoreCase) ||
+                                    extension.Equals(".cs", StringComparison.OrdinalIgnoreCase) ||
+                                    extension.Equals(".cpp", StringComparison.OrdinalIgnoreCase) ||
+                                    extension.Equals(".h", StringComparison.OrdinalIgnoreCase) ||
+                                    extension.Equals(".c", StringComparison.OrdinalIgnoreCase) ||
+                                    extension.Equals(".hpp", StringComparison.OrdinalIgnoreCase);
+                if (isSourceFile && !targetLocation.CanHaveScripts)
                 {
                     // Error
-                    Editor.LogWarning(string.Format("Cannot import \'{0}\' to \'{1}\'. The target directory cannot have scripts.", inputPath, targetLocation.Node.Path));
+                    Editor.LogWarning(string.Format("Cannot import \'{0}\' to \'{1}\'. Source files must be placed in the Source folder.", inputPath, targetLocation.Node.Path));
                     if (!skipDialog)
                     {
                         skipDialog = true;
-                        MessageBox.Show("Target location cannot have scripts. Use Source folder for your game source code.", "Cannot import assets", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show("Source files must be placed in the Source folder. New gameplay scripts use Java.", "Cannot import source file", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                     return;
                 }

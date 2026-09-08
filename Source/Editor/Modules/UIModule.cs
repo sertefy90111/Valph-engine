@@ -16,6 +16,7 @@ using FlaxEditor.Windows;
 using FlaxEngine;
 using FlaxEngine.GUI;
 using FlaxEngine.Json;
+using DockPanel = FlaxEditor.GUI.Docking.DockPanel;
 using MasterDockPanel = FlaxEditor.GUI.Docking.MasterDockPanel;
 using FlaxEditor.Content.Settings;
 using FlaxEditor.Options;
@@ -76,6 +77,7 @@ namespace FlaxEditor.Modules
         private int _statusID = 1;
         private ContentStats _contentStats;
         private bool _progressFailed;
+        private InterfaceOptions.LayoutProfile _appliedLayoutProfile;
 
         ContextMenuSingleSelectGroup<int> _numberOfClientsGroup = new ContextMenuSingleSelectGroup<int>();
 
@@ -303,7 +305,8 @@ namespace FlaxEditor.Modules
             _toolStripScale.Checked = gizmoMode == TransformGizmoBase.Mode.Scale;
             //
             _toolStripBuildScenes.Enabled = (canEditScene && !isPlayMode) || Editor.StateMachine.BuildingScenesState.IsActive;
-            _toolStripBuildScenes.Visible = Editor.Options.Options.General.BuildActions?.Length != 0;
+            _toolStripBuildScenes.Visible = !Editor.Options.IsPhoneLayout && Editor.Options.Options.General.BuildActions?.Length != 0;
+            _toolStripCook.Visible = !Editor.Options.IsPhoneLayout;
             _toolStripCook.Enabled = Editor.Windows.GameCookerWin.CanBuild(Platform.PlatformType) && !GameCooker.IsRunning;
             //
             var play = _toolStripPlay;
@@ -502,6 +505,7 @@ namespace FlaxEditor.Modules
             Editor.CodeEditing.SelectedEditorChanged += OnSelectedCodeEditorChanged;
 
             mainWindow.PerformLayout(true);
+            ApplyResponsiveLayout(Editor.Options.Options);
         }
 
         private void InitViewportScaleOptions()
@@ -558,6 +562,10 @@ namespace FlaxEditor.Modules
         /// <inheritdoc />
         public override void OnUpdate()
         {
+            // Re-evaluate Adaptive when the editor window is resized between desktop and phone dimensions.
+            if (Editor.Options.Options.Interface.Profile == InterfaceOptions.LayoutProfile.Adaptive)
+                ApplyResponsiveLayout(Editor.Options.Options);
+
             if (_statusMessages != null && _statusMessages.Count > 0 && _statusMessages[0].EndTime - DateTime.Now < TimeSpan.Zero)
             {
                 _statusMessages.RemoveAt(0);
@@ -853,6 +861,44 @@ namespace FlaxEditor.Modules
             };
         }
 
+        private void ApplyResponsiveLayout(EditorOptions options)
+        {
+            if (MainMenu == null || ToolStrip == null || MasterPanel == null || StatusBar == null)
+                return;
+
+            var profile = Editor.Options.EffectiveLayoutProfile;
+            if (_appliedLayoutProfile == profile)
+                return;
+
+            _appliedLayoutProfile = profile;
+            bool isPhone = profile == InterfaceOptions.LayoutProfile.Phone;
+            float iconScale = Mathf.Max(options.Interface.IconsScale, 0.1f);
+
+            // Keep touch targets large enough to use comfortably while removing secondary actions from the phone toolbar.
+            MainMenu.Height = isPhone ? 36.0f : (Utilities.Utils.UseCustomWindowDecorations(isMainWindow: true) ? 28.0f : 20.0f);
+            ToolStrip.Height = (isPhone ? 48.0f : 34.0f) * iconScale;
+            ToolStrip.ItemsMargin = isPhone ? new Margin(4, 4, 2, 2) : new Margin(2, 2, 1, 1);
+            ToolStrip.LocalY = MainMenu.Bottom;
+
+            // Build and cook are still available from the menus, but keeping them off the phone toolbar saves space and avoids accidental expensive work.
+            _toolStripBuildScenes.Visible = !isPhone && options.General.BuildActions?.Length != 0;
+            _toolStripCook.Visible = !isPhone;
+            _toolStripStep.Visible = !isPhone;
+
+            MainMenu.PerformLayout(true);
+            ToolStrip.PerformLayout(true);
+            RefreshDockPanelLayout(MasterPanel);
+            MasterPanel.Offsets = new Margin(0, 0, ToolStrip.Bottom, StatusBar.Height);
+            MasterPanel.PerformLayout(true);
+        }
+
+        private static void RefreshDockPanelLayout(DockPanel panel)
+        {
+            panel.TabsProxy?.RefreshResponsiveLayout();
+            for (int i = 0; i < panel.ChildPanels.Count; i++)
+                RefreshDockPanelLayout(panel.ChildPanels[i]);
+        }
+
         private void OnOptionsChanged(EditorOptions options)
         {
             var inputOptions = options.Input;
@@ -888,6 +934,7 @@ namespace FlaxEditor.Modules
             _menuToolsProfilerWindow.ShortKeys = inputOptions.ProfilerWindow.ToString();
             _menuToolsTakeScreenshot.ShortKeys = inputOptions.TakeScreenshot.ToString();
 
+            ApplyResponsiveLayout(options);
             MainMenuShortcutKeysUpdated?.Invoke();
 
             UpdateToolstrip();

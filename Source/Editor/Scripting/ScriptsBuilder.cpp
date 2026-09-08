@@ -119,7 +119,8 @@ Action ScriptsBuilder::OnCompilationFailed;
 void ScriptsBuilderImpl::sourceDirEvent(const String& path, FileSystemAction action)
 {
     // Discard non-source files or generated files
-    if ((!path.EndsWith(TEXT(".cs")) &&
+    if ((!path.EndsWith(TEXT(".java"), StringSearchCase::IgnoreCase) &&
+        !path.EndsWith(TEXT(".cs")) &&
         !path.EndsWith(TEXT(".cpp")) &&
         !path.EndsWith(TEXT(".c")) &&
         !path.EndsWith(TEXT(".hpp")) &&

@@ -745,7 +745,7 @@ namespace FlaxEditor.Modules
             else
             {
                 // Try to remove module if build.cs file is being deleted
-                if (item.Path.Contains(".Build.cs", StringComparison.Ordinal) && item.ItemType == ContentItemType.Script)
+                if (item.Path.Contains(".Build.cs", StringComparison.Ordinal))
                     Editor.Instance.CodeEditing.RemoveModule(item.Path);
 
                 // Delete asset file only if it was explicitly deleted by the user.
@@ -1025,11 +1025,13 @@ namespace FlaxEditor.Modules
                         continue;
 #endif
 
-                    // Create file item
+                    // Create file item. Java is the default gameplay language; keep legacy C# and C++ source items available for existing projects.
                     ContentItem item;
-                    if (path.EndsWith(".cs"))
+                    if (path.EndsWith(".java", StringComparison.OrdinalIgnoreCase))
+                        item = new JavaScriptItem(path);
+                    else if (path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
                         item = new CSharpScriptItem(path);
-                    else if (path.EndsWith(".cpp") || path.EndsWith(".h") || path.EndsWith(".c") || path.EndsWith(".hpp"))
+                    else if (path.EndsWith(".cpp", StringComparison.OrdinalIgnoreCase) || path.EndsWith(".h", StringComparison.OrdinalIgnoreCase) || path.EndsWith(".c", StringComparison.OrdinalIgnoreCase) || path.EndsWith(".hpp", StringComparison.OrdinalIgnoreCase))
                         item = new CppScriptItem(path);
                     else if (path.EndsWith(".shader") || path.EndsWith(".hlsl"))
                         item = new ShaderSourceItem(path);
@@ -1156,6 +1158,13 @@ namespace FlaxEditor.Modules
             Proxy.Add(new ParticleEmitterFunctionProxy());
             Proxy.Add(new ParticleSystemProxy());
             Proxy.Add(new SceneAnimationProxy());
+            // Java is the default gameplay language. Existing C# and C++ proxies remain registered for compatibility.
+            Proxy.Add(new JavaScriptProxy());
+            Proxy.Add(new JavaEmptyProxy());
+            Proxy.Add(new JavaEmptyClassProxy());
+            Proxy.Add(new JavaEmptyInterfaceProxy());
+            Proxy.Add(new JavaActorProxy());
+            Proxy.Add(new JavaGamePluginProxy());
             Proxy.Add(new CSharpScriptProxy());
             Proxy.Add(new CSharpEmptyProxy());
             Proxy.Add(new CSharpEmptyClassProxy());

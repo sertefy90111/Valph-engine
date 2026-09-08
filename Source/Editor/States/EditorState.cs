@@ -93,23 +93,17 @@ namespace FlaxEditor.States
         /// </summary>
         public virtual void UpdateFPS()
         {
-            var generalOptions = Editor.Options.Options.General;
-            var editorFps = generalOptions.EditorFPS;
-            if (!Platform.HasFocus)
+            var focused = Platform.HasFocus;
+            var editorFps = Editor.Options.GetEditorFPS(focused);
+            if (editorFps < 1)
             {
-                // Drop performance if app has no focus
-                Time.DrawFPS = generalOptions.EditorFPSWhenNotFocused;
-                Time.UpdateFPS = generalOptions.EditorFPSWhenNotFocused;
-            }
-            else if (editorFps < 1)
-            {
-                // Unlimited power!!!
+                // Unlimited power is only used by the desktop profile. Phone and LowEnd profiles return a safe cap here.
                 Time.DrawFPS = 0;
                 Time.UpdateFPS = 0;
             }
             else
             {
-                // Custom or default value but just don't go too low
+                // Custom or profile-capped value but just don't go too low.
                 editorFps = Mathf.Max(editorFps, 10);
                 Time.DrawFPS = editorFps;
                 Time.UpdateFPS = editorFps;
