@@ -1,0 +1,177 @@
+name: Build
+
+on:
+  push:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - 'LICENSE*'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - 'LICENSE*'
+  workflow_dispatch:
+
+run-name: Build (#${{ github.run_number }})
+
+# Kill outdated runs on new push to the same branch — saves queue time and minutes.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_ROLL_FORWARD: minor
+  NUGET_XMLDOC_MODE: skip
+  DOTNET_VERSION: 8.0.x # use runner-preinstalled SDK instead of downloading a pinned patch
+  VULKAN_VERSION: 1.3.290.0
+
+jobs:
+  build:
+    name: ${{ matrix.label }}
+    runs-on: windows-2022
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false # one platform failing must not cancel the other
+      matrix:
+        include:
+          - label: Editor (Windows, Development x64)
+            platform: Windows
+            target: FlaxEditor
+            arch: x64
+            configuration: Development
+          - label: Game (Windows, Release x64)
+            platform: Windows
+            target: FlaxGame
+            arch: x64
+            configuration: Release
+          - label: Game (Android, Release ARM64)
+            platform: Android
+            target: FlaxGame
+            arch: ARM64
+            configuration: Release
+            android: true
+    steps:
+      - name: Checkout repo (shallow + LFS in one pass)
+        uses: actions/checkout@v6
+        with:
+          lfs: true
+          fetch-depth: 1
+          show-progress: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Locate dotnet root
+        id: dotnet-root
+        shell: pwsh
+        run: |
+          $root = Split-Path (Get-Command dotnet).Source
+          "root=$root" >> $env:GITHUB_OUTPUT
+          Write-Host "dotnet root: $root"
+
+      # Shared cache: Vulkan SDK (~1 GB install) + NuGet packages.
+      # Exact key hit = restore in ~30-60s and zero re-upload (vs minutes of downloads).
+      - name: Restore toolchain cache
+        id: cache-toolchain
+        uses: actions/cache@v4
+        with:
+          path: |
+            C:\VulkanSDK
+            ~/.nuget/packages
+          key: toolchain-vulkan${{ env.VULKAN_VERSION }}-dotnet${{ env.DOTNET_VERSION }}-v1
+
+      - name: Setup Vulkan SDK
+        if: steps.cache-toolchain.outputs.cache-hit != 'true'
+        uses: ./.github/actions/vulkan
+        with:
+          vulkan-version: ${{ env.VULKAN_VERSION }}
+
+      - name: Export VULKAN_SDK (cache hit)
+        if: steps.cache-toolchain.outputs.cache-hit == 'true'
+        shell: pwsh
+        run: |
+          $sdk = 'C:\VulkanSDK'
+          if (-not (Test-Path (Join-Path $sdk 'Include'))) {
+            $cand = Get-ChildItem $sdk -Directory -ErrorAction SilentlyContinue |
+              Where-Object { Test-Path (Join-Path $_.FullName 'Include') } |
+              Sort-Object Name -Descending | Select-Object -First 1
+            if ($cand) { $sdk = $cand.FullName }
+          }
+          "VULKAN_SDK=$sdk" >> $env:GITHUB_ENV
+          "VULKAN_SDK_VER=${{ env.VULKAN_VERSION }}" >> $env:GITHUB_ENV
+          Write-Host "VULKAN_SDK=$sdk"
+
+      # Android-only: .NET workload packs/manifests (Windows jobs don't need them).
+      - name: Restore Android workload cache
+        if: matrix.android == true
+        id: cache-android
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ steps.dotnet-root.outputs.root }}\packs
+            ${{ steps.dotnet-root.outputs.root }}\sdk-manifests
+            ${{ steps.dotnet-root.outputs.root }}\metadata
+          key: android-packs-dotnet${{ env.DOTNET_VERSION }}-v1
+
+      - name: Install Android workload (only if missing)
+        if: matrix.android == true
+        shell: pwsh
+        run: |
+          $list = dotnet workload list
+          if ($list -match 'android') { Write-Host 'Android workload already installed, skipping.' }
+          else { dotnet workload install android }
+
+      # Incremental native compilation: restore Flax object files/depfiles from
+      # the previous run. Full rebuild only on cache miss.
+      - name: Restore Flax build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            Cache/Intermediate/${{ matrix.target }}
+            Cache/Intermediate/Build
+            Binaries/Tools
+          key: flax-${{ matrix.platform }}-${{ matrix.target }}-${{ matrix.arch }}-${{ matrix.configuration }}-${{ github.sha }}
+          restore-keys: |
+            flax-${{ matrix.platform }}-${{ matrix.target }}-${{ matrix.arch }}-${{ matrix.configuration }}-
+
+      - name: Build
+        shell: pwsh
+        run: |
+          $t0 = Get-Date
+          foreach ($f in 'global.json','Source/Tools/Flax.Build/global.json') {
+            (Get-Content $f).Replace('latestMajor','minor') | Set-Content $f
+          }
+          (Get-Content 'Source/Tools/Flax.Build/Flax.Build.csproj').Replace('LatestMajor','Minor') | Set-Content 'Source/Tools/Flax.Build/Flax.Build.csproj'
+          .\Development\Scripts\Windows\CallBuildTool.bat -build -log -printSDKs -dotnet=8 -arch=${{ matrix.arch }} -platform=${{ matrix.platform }} -configuration=${{ matrix.configuration }} -buildtargets=${{ matrix.target }}
+          $code = $LASTEXITCODE
+          "### ⏱️ ${{ matrix.label }} finished in $(((Get-Date) - $t0).ToString('mm\:ss')) (exit $code)" >> $env:GITHUB_STEP_SUMMARY
+          exit $code
+
+      - name: Upload binaries
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.configuration }}
+          path: Binaries/${{ matrix.target }}/${{ matrix.platform }}/**
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 1 # fastest upload, binaries are already dense
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}-${{ matrix.platform }}-logs-${{ github.run_number }}
+          path: Logs/**
+          if-no-files-found: warn
+          retention-days: 7
