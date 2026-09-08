@@ -257,7 +257,7 @@ namespace FlaxEditor.Windows
         private void UpdateCameraPreview()
         {
             // Disable rendering preview during GI baking
-            if (Editor == null || Editor.StateMachine.CurrentState.IsPerformanceHeavy)
+            if (Editor == null || Editor.StateMachine.CurrentState.IsPerformanceHeavy || !Editor.Options.ShowCameraPreview)
             {
                 HideAllCameraPreviews();
                 return;
@@ -279,7 +279,7 @@ namespace FlaxEditor.Windows
                 }
             }
 
-            if (Editor.Options.Options.Interface.ShowSelectedCameraPreview)
+            if (Editor.Options.ShowCameraPreview)
             {
                 // Find any selected cameras and create previews for them
                 for (int i = 0; i < selection.Count; i++)

@@ -184,13 +184,17 @@ namespace FlaxEditor.CustomEditors.Dedicated
                     var newKeys = new Dictionary<string, string>();
                     Profiler.BeginEvent("LocalizationSettingsEditor.FindLocalizedStringsInSource");
 
-                    // C#
-                    var files = Directory.GetFiles(Globals.ProjectSourceFolder, "*.cs", SearchOption.AllDirectories);
+                    // Java gameplay scripts (the default project workflow)
+                    var files = Directory.GetFiles(Globals.ProjectSourceFolder, "*.java", SearchOption.AllDirectories);
                     var filesCount = files.Length;
                     foreach (var file in files)
-                        FindNewKeysCSharp(file, newKeys, allKeys);
+                        FindNewKeysJava(file, newKeys, allKeys);
 
-                    // C/C++
+                    // Keep localization discovery for legacy C# and C/C++ projects.
+                    files = Directory.GetFiles(Globals.ProjectSourceFolder, "*.cs", SearchOption.AllDirectories);
+                    filesCount += files.Length;
+                    foreach (var file in files)
+                        FindNewKeysCSharp(file, newKeys, allKeys);
                     files = Directory.GetFiles(Globals.ProjectSourceFolder, "*.cpp", SearchOption.AllDirectories).Concat(Directory.GetFiles(Globals.ProjectSourceFolder, "*.c", SearchOption.AllDirectories)).ToArray();
                     filesCount += files.Length;
                     foreach (var file in files)
@@ -298,6 +302,13 @@ namespace FlaxEditor.CustomEditors.Dedicated
         private static void FindNewKeysCSharp(string file, Dictionary<string, string> newKeys, HashSet<string> allKeys)
         {
             var startToken = "Localization.GetString";
+            var textToken = "\"";
+            FindNewKeys(file, newKeys, allKeys, startToken, textToken);
+        }
+
+        private static void FindNewKeysJava(string file, Dictionary<string, string> newKeys, HashSet<string> allKeys)
+        {
+            var startToken = "Localization.getString";
             var textToken = "\"";
             FindNewKeys(file, newKeys, allKeys, startToken, textToken);
         }

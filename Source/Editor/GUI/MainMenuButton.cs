@@ -85,6 +85,17 @@ namespace FlaxEditor.GUI
         }
 
         /// <inheritdoc />
+        public override bool OnTouchDown(Float2 location, int pointerId)
+        {
+            Focus();
+
+            if (Parent is MainMenu menu)
+                menu.Selected = this;
+
+            return true;
+        }
+
+        /// <inheritdoc />
         public override void OnMouseEnter(Float2 location)
         {
             base.OnMouseEnter(location);

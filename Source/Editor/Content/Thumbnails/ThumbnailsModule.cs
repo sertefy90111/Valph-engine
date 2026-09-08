@@ -547,7 +547,7 @@ namespace FlaxEditor.Content.Thumbnails
                 {
                     // Prepare requests
                     bool isAnyReady = false;
-                    int checks = Mathf.Min(10, _requests.Count);
+                    int checks = Mathf.Min(Editor.Options.ThumbnailChecksPerFrame, _requests.Count);
                     for (int i = 0; i < checks && i < _requests.Count; i++)
                     {
                         var request = _requests[i];

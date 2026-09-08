@@ -433,8 +433,8 @@ namespace Flax.Build
                                 var generatedSourceFiles = new List<string>();
                                 foreach (var module in binaryModule.Value)
                                 {
-                                    // C# sources included into build source files
-                                    sourceFiles.AddRange(modulesBuildOptions[module].SourceFiles.Where(x => x.EndsWith(".cs")));
+                                    // Managed sources plus Java gameplay files. Java is shown as None in the C# project while its generated .cs file is compiled.
+                                    sourceFiles.AddRange(modulesBuildOptions[module].SourceFiles.Where(x => x.EndsWith(".cs") || x.EndsWith(".java")));
                                 }
                                 sourceFiles.RemoveAll(x => x.EndsWith(BuildFilesPostfix));
                                 foreach (var target in targets)

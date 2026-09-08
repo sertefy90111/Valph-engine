@@ -7,7 +7,7 @@
 #include "Engine/Scripting/ScriptingType.h"
 
 /// <summary>
-/// Game scrips building service. Compiles user C# scripts into binary assemblies. Exposes many events used to track scripts compilation and reloading.
+/// Game scripts building service. Compiles Java gameplay scripts (transpiled to the managed runtime by Flax.Build) into binary assemblies. Exposes many events used to track scripts compilation and reloading.
 /// </summary>
 API_CLASS(Static, Namespace="FlaxEditor") class ScriptsBuilder
 {

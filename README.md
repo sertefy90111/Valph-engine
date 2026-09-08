@@ -3,8 +3,10 @@
 <a href="https://marketplace.visualstudio.com/items?itemName=Flax.FlaxVS"><img src="https://img.shields.io/badge/vs-extension-green.svg"/></a>
 <a href="https://flaxengine.com/discord"><img src="https://discordapp.com/api/guilds/437989205315158016/widget.png"/></a>
 
-Flax Engine is a high quality modern 3D game engine written in C++ and C#.
+Flax Engine is a high quality modern 3D game engine written in C++ with Java gameplay scripting.
 From stunning graphics to powerful scripts, it's designed for fast workflow with many ready-to-use features waiting for you right now. To learn more see the website ([www.flaxengine.com](https://flaxengine.com)).
+
+The editor now uses a Java-first scripting workflow: new gameplay scripts are created as `.java` files and the built-in Flax.Build frontend translates the supported Java syntax to the engine runtime during the normal script build. Engine and build-system internals remain native C++/managed implementation code, and existing C# or C++ projects remain compatible.
 
 This repository contains full source code of the Flax Engine (excluding NDA-protected platforms support). Documentation source is also available in a separate repository. Anyone is welcome to contribute or use the modified source in Flax-based games.
 
@@ -25,6 +27,22 @@ This repository contains full source code of the Flax Engine (excluding NDA-prot
 # Getting started
 
 Follow the instructions below to compile and run the engine from source.
+
+## Java gameplay scripting
+
+Create gameplay code from the Content window under **New → Java**. The editor creates `.java` files for scripts, actors, plugins, classes, and interfaces. Java packages are generated from the module and folder path, and the normal script build automatically produces intermediate managed sources before compiling the game assembly.
+
+The frontend supports the Java syntax used by the templates (classes, packages, inheritance, interfaces, primitive types, collections, and the standard Flax lifecycle methods). Use the engine API exposed in the templates. `.Build.cs` files are build metadata for Flax.Build and are not gameplay scripts.
+
+## Responsive editor and low-end devices
+
+Open **Editor Options → Interface → Layout Profile**:
+
+* **Adaptive** switches to the phone layout automatically when the editor window is small.
+* **Phone** increases touch targets, reduces the toolbar to essential actions, and keeps build/cook actions in menus.
+* **Low End** caps editor frame rate, disables expensive camera/particle/MSAA previews, and throttles thumbnail work.
+
+The profile is designed to keep the editor usable on phones, small screens, and devices with limited CPU/GPU resources without changing the quality settings of the game being edited.
 
 ## Windows
 

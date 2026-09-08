@@ -760,7 +760,7 @@ namespace FlaxEditor.GUI.Tree
             }
 
             // Show tree guidelines
-            if (Editor.Instance.Options.Options.Interface.ShowTreeLines)
+            if (Editor.Instance.Options.ShowTreeLines)
             {
                 ContainerControl parent = Parent;
                 TreeNode parentNode = parent as TreeNode;

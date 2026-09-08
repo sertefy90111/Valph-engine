@@ -15,6 +15,32 @@ namespace FlaxEditor.Options
     public class InterfaceOptions
     {
         /// <summary>
+        /// The editor layout and rendering profile. Adaptive selects a phone layout automatically when the available window is small.
+        /// </summary>
+        public enum LayoutProfile
+        {
+            /// <summary>
+            /// Select a profile from the available window size.
+            /// </summary>
+            Adaptive,
+
+            /// <summary>
+            /// Use the full desktop editor layout.
+            /// </summary>
+            Desktop,
+
+            /// <summary>
+            /// Use a touch-friendly, single-row layout for phones and small screens.
+            /// </summary>
+            Phone,
+
+            /// <summary>
+            /// Disable expensive editor previews and reduce background work for low-end devices.
+            /// </summary>
+            LowEnd,
+        }
+
+        /// <summary>
         /// The log timestamp modes.
         /// </summary>
         public enum TimestampsFormats
@@ -242,6 +268,13 @@ namespace FlaxEditor.Options
         [DefaultValue(1.0f), Limit(0.1f, 10.0f)]
         [EditorDisplay("Interface"), EditorOrder(10), Tooltip("Editor User Interface scale. Applied to all UI elements, windows and text. Can be used to scale the interface up on a bigger display. Editor restart required.")]
         public float InterfaceScale { get; set; } = 1.0f;
+
+        /// <summary>
+        /// Gets or sets the responsive editor layout profile. Adaptive switches to the phone layout for small windows.
+        /// </summary>
+        [DefaultValue(LayoutProfile.Adaptive)]
+        [EditorDisplay("Interface", "Layout Profile"), EditorOrder(20), Tooltip("Select Adaptive for a responsive editor. Phone uses larger touch targets and fewer toolbar controls; Low End disables expensive previews and background work.")]
+        public LayoutProfile Profile { get; set; } = LayoutProfile.Adaptive;
 
         /// <summary>
         /// Gets or sets a value indicating whether show selected camera preview in the editor window.

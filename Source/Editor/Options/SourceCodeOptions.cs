@@ -15,6 +15,33 @@ namespace FlaxEditor.Options
     public sealed class SourceCodeOptions
     {
         /// <summary>
+        /// The default gameplay scripting language. Java is selected by default; C# and C++ remain available for legacy projects.
+        /// </summary>
+        public enum ScriptingLanguage
+        {
+            /// <summary>
+            /// Java source files are transpiled to the engine runtime before compilation.
+            /// </summary>
+            Java,
+
+            /// <summary>
+            /// Legacy C# gameplay source. Existing C# projects remain supported.
+            /// </summary>
+            CSharp,
+
+            /// <summary>
+            /// Legacy C++ gameplay source. Existing C++ projects remain supported.
+            /// </summary>
+            Cpp,
+        }
+
+        /// <summary>
+        /// Gets the gameplay scripting language used by the editor.
+        /// </summary>
+        [EditorDisplay("Scripting", "Language"), EditorOrder(10), Tooltip("New gameplay scripts use Java by default. C# and C++ remain available for existing projects.")]
+        public ScriptingLanguage Language { get; set; } = ScriptingLanguage.Java;
+
+        /// <summary>
         /// Editor for the editing of the editable SourceCodeEditor property.
         /// </summary>
         /// <seealso cref="FlaxEditor.CustomEditors.CustomEditor" />

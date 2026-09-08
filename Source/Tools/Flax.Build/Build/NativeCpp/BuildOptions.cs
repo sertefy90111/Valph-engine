@@ -509,7 +509,19 @@ namespace Flax.Build.NativeCpp
                     var path = SourcePaths[i];
                     if (!Directory.Exists(path))
                         continue;
-                    var files = Directory.GetFiles(path, "*", SearchOption.AllDirectories);
+                    var files = new List<string>(Directory.GetFiles(path, "*", SearchOption.AllDirectories));
+                    for (int j = 0; j < files.Count; j++)
+                    {
+                        if (files[j].EndsWith(".java", StringComparison.OrdinalIgnoreCase))
+                        {
+                            // Java gameplay scripts are transpiled into the managed source set. The generated files live in the
+                            // intermediate directory so they never pollute the user's Source folder or the content database.
+                            var generatedFile = JavaSourceTranspiler.Generate(files[j], path, IntermediateFolder);
+                            if (!string.IsNullOrEmpty(generatedFile))
+                                files.Add(generatedFile);
+                        }
+                    }
+
                     var count = SourceFiles.Count;
                     if (SourceFiles.Count == 0)
                     {
@@ -517,7 +529,7 @@ namespace Flax.Build.NativeCpp
                     }
                     else
                     {
-                        for (int j = 0; j < files.Length; j++)
+                        for (int j = 0; j < files.Count; j++)
                         {
                             bool unique = true;
                             for (int k = 0; k < count; k++)

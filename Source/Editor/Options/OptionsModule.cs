@@ -43,6 +43,85 @@ namespace FlaxEditor.Options
         private readonly Dictionary<string, CreateCustomSettingsDelegate> _customSettings = new Dictionary<string, CreateCustomSettingsDelegate>();
 
         /// <summary>
+        /// Gets the effective layout profile used by the editor. Adaptive switches to Phone when the main window is small.
+        /// </summary>
+        public InterfaceOptions.LayoutProfile EffectiveLayoutProfile
+        {
+            get
+            {
+                var profile = Options.Interface.Profile;
+                if (profile != InterfaceOptions.LayoutProfile.Adaptive)
+                    return profile;
+
+                var mainWindow = Editor.Windows?.MainWindow;
+                if (mainWindow != null)
+                {
+                    var size = mainWindow.ClientSize;
+                    if (size.X < 900.0f || size.Y < 600.0f)
+                        return InterfaceOptions.LayoutProfile.Phone;
+                }
+
+                return InterfaceOptions.LayoutProfile.Desktop;
+            }
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether the phone layout is active.
+        /// </summary>
+        public bool IsPhoneLayout => EffectiveLayoutProfile == InterfaceOptions.LayoutProfile.Phone;
+
+        /// <summary>
+        /// Gets a value indicating whether the low-end performance profile is active.
+        /// </summary>
+        public bool IsLowEndProfile => EffectiveLayoutProfile == InterfaceOptions.LayoutProfile.LowEnd;
+
+        /// <summary>
+        /// Gets whether editor particle previews should be rendered.
+        /// </summary>
+        public bool UseParticlesPreview => Options.Visual.EnableParticlesPreview && !IsLowEndProfile;
+
+        /// <summary>
+        /// Gets whether editor debug primitives should use MSAA.
+        /// </summary>
+        public bool UseMSAAForDebugDraw => Options.Visual.EnableMSAAForDebugDraw && !IsLowEndProfile;
+
+        /// <summary>
+        /// Gets whether selected camera previews should be rendered.
+        /// </summary>
+        public bool ShowCameraPreview => Options.Interface.ShowSelectedCameraPreview && !IsLowEndProfile;
+
+        /// <summary>
+        /// Gets whether tree guide lines should be drawn.
+        /// </summary>
+        public bool ShowTreeLines => Options.Interface.ShowTreeLines && !IsLowEndProfile;
+
+        /// <summary>
+        /// Gets the frame-rate limit for the current profile.
+        /// </summary>
+        /// <param name="focused">True if the editor window is focused.</param>
+        /// <returns>The effective frame-rate limit. Zero is unlimited for the desktop profile.</returns>
+        public float GetEditorFPS(bool focused)
+        {
+            var fps = focused ? Options.General.EditorFPS : Options.General.EditorFPSWhenNotFocused;
+            var profile = EffectiveLayoutProfile;
+            var limit = profile switch
+            {
+                InterfaceOptions.LayoutProfile.Phone => focused ? 45.0f : 12.0f,
+                InterfaceOptions.LayoutProfile.LowEnd => focused ? 30.0f : 10.0f,
+                _ => 0.0f,
+            };
+
+            if (limit <= 0.0f)
+                return fps;
+            return fps <= 0.0f ? limit : Mathf.Min(fps, limit);
+        }
+
+        /// <summary>
+        /// Gets the number of thumbnail requests that may be prepared during one frame.
+        /// </summary>
+        public int ThumbnailChecksPerFrame => IsLowEndProfile ? 2 : IsPhoneLayout ? 4 : 10;
+
+        /// <summary>
         /// Gets the custom settings factories. Each entry defines the custom settings type identified by the given key name. The value is a factory function that returns the default options for a given type.
         /// </summary>
         public IReadOnlyDictionary<string, CreateCustomSettingsDelegate> CustomSettings => _customSettings;
@@ -192,7 +271,7 @@ namespace FlaxEditor.Options
             internalOptions.AutoReloadScriptsOnMainWindowFocus = (byte)(Options.General.AutoReloadScriptsOnMainWindowFocus ? 1 : 0);
             internalOptions.ForceScriptCompilationOnStartup = (byte)(Options.General.ForceScriptCompilationOnStartup ? 1 : 0);
             internalOptions.UseAssetImportPathRelative = (byte)(Options.General.UseAssetImportPathRelative ? 1 : 0);
-            internalOptions.EnableParticlesPreview = (byte)(Options.Visual.EnableParticlesPreview ? 1 : 0);
+            internalOptions.EnableParticlesPreview = (byte)(UseParticlesPreview ? 1 : 0);
             internalOptions.AutoRebuildCSG = (byte)(Options.General.AutoRebuildCSG ? 1 : 0);
             internalOptions.AutoRebuildCSGTimeoutMs = Options.General.AutoRebuildCSGTimeoutMs;
             internalOptions.AutoRebuildNavMesh = (byte)(Options.General.AutoRebuildNavMesh ? 1 : 0);
